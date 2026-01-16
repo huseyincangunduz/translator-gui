@@ -393,7 +393,7 @@ async function addTranslation() {
     // TypeScript: 'text' veya "text" -> translate('prefix.key')
     updatedContent = updatedContent.replace(
       selectedString.fullMatch,
-      `this.translate.instant('${fullKeyValue}')`
+      `this.translate.getString('${fullKeyValue}')`
     );
   }
 
