@@ -1,5 +1,4 @@
-// this file will be builded with ../../tsconfig.renderer.json 
-
+// this file will be builded with ../../tsconfig.renderer.json
 
 // Ana uygulama mantığı
 let projectPath: string | null = null;
@@ -37,9 +36,9 @@ const translationForm = document.getElementById(
 const selectedStringDiv = document.getElementById(
   "selected-string"
 ) as HTMLDivElement;
-const targetJsonSelect = document.getElementById(
-  "target-json"
-) as HTMLSelectElement;
+// const targetJsonSelect = document.getElementById(
+//   "target-json"
+// ) as HTMLSelectElement;
 const translationPrefix = document.getElementById(
   "translation-prefix"
 ) as HTMLInputElement;
@@ -51,6 +50,9 @@ const btnAddTranslation = document.getElementById(
   "btn-add-translation"
 ) as HTMLButtonElement;
 const btnCancel = document.getElementById("btn-cancel") as HTMLButtonElement;
+const translationsContainer = document.querySelector(
+  "#translation-form .translations"
+) as HTMLDivElement;
 
 const statusBar = document.getElementById("status-bar") as HTMLDivElement;
 
@@ -63,6 +65,37 @@ translationPrefix.addEventListener("input", updateFullKey);
 translationKey.addEventListener("input", updateFullKey);
 btnAddTranslation.addEventListener("click", addTranslation);
 btnCancel.addEventListener("click", cancelTranslation);
+
+async function addTranslationStringsByLanguage() {
+  if (jsonFiles.length === 0) return;
+  if (!selectedString) return;
+  if (projectPath === null) return;
+
+  // Mevcutları temizle
+  translationsContainer.innerHTML = "";
+
+  // Her JSON dosyası için bir textarea ekle
+  jsonFiles.forEach((file, index) => {
+    const fileName = file.path.split("/").pop();
+    const language = fileName?.split(".")[0] || `lang${index + 1}`;
+
+    const translationDiv = document.createElement("div");
+    translationDiv.className = "form-group";
+
+    const label = document.createElement("label");
+    label.textContent = `Çeviri (${language}):`;
+
+    const textarea = document.createElement("textarea");
+    textarea.id = `translation-${language}`;
+    textarea.rows = 3;
+    textarea.placeholder = `Çeviriyi buraya girin (${language})`;
+    textarea.value = selectedString.text; // Varsayılan olarak orijinal metin
+    
+    translationDiv.appendChild(label);
+    translationDiv.appendChild(textarea);
+    translationsContainer.appendChild(translationDiv);
+  });
+}
 
 // Functions
 async function selectProjectFolder() {
@@ -228,22 +261,25 @@ function selectString(str: any) {
 }
 
 function updateTargetJsonDropdown() {
-  targetJsonSelect.innerHTML = "";
+  addTranslationStringsByLanguage();
 
-  if (jsonFiles.length === 0) {
-    targetJsonSelect.innerHTML = "<option>Önce JSON dosyası seç</option>";
-    targetJsonSelect.disabled = true;
-    return;
-  }
+  // Aşağıdaki kod artık kullanılmıyor çünkü her JSON için textarea ekleniyor
+  // targetJsonSelect.innerHTML = "";
 
-  jsonFiles.forEach((file, index) => {
-    const option = document.createElement("option");
-    option.value = index.toString();
-    option.textContent = file.path.split("/").pop() || file.path;
-    targetJsonSelect.appendChild(option);
-  });
+  // if (jsonFiles.length === 0) {
+  //   targetJsonSelect.innerHTML = "<option>Önce JSON dosyası seç</option>";
+  //   targetJsonSelect.disabled = true;
+  //   return;
+  // }
 
-  targetJsonSelect.disabled = false;
+  // jsonFiles.forEach((file, index) => {
+  //   const option = document.createElement("option");
+  //   option.value = index.toString();
+  //   option.textContent = file.path.split("/").pop() || file.path;
+  //   targetJsonSelect.appendChild(option);
+  // });
+
+  // targetJsonSelect.disabled = false;
 }
 
 function updateFullKey() {
@@ -261,8 +297,8 @@ async function selectTranslationFiles() {
   const paths = await window.electronAPI.selectFiles([
     { name: "JSON Files", extensions: ["json"] },
   ]);
-//   alert(paths.length + " dosya seçildi");
-//   alert(typeof paths + " " + paths);
+  //   alert(paths.length + " dosya seçildi");
+  //   alert(typeof paths + " " + paths);
   if (paths && paths.length > 0) {
     updateStatus("JSON dosyaları yükleniyor...");
     for (const path of paths) {
@@ -330,17 +366,17 @@ function removeJsonFile(index: number) {
 async function addTranslation() {
   if (!selectedString || jsonFiles.length === 0) return;
 
-  const targetIndex = parseInt(targetJsonSelect.value);
-  const targetJson = jsonFiles[targetIndex];
+  // const targetJson = jsonFiles[targetIndex];
 
-  if (!targetJson) {
-    alert("Hedef JSON seçin");
-    return;
-  }
+  await addTranslationToFile();
 
+  // cancelTranslation();
+}
+
+async function addTranslationToFile() {
   const prefix = translationPrefix.value.trim();
   const key = translationKey.value.trim();
-
+  alert("Prefix: " + prefix + " Key: " + key);
   if (!prefix || !key) {
     alert("Prefix ve key alanları zorunludur");
     return;
@@ -348,33 +384,35 @@ async function addTranslation() {
 
   const fullKeyValue = `${prefix}.${key}`;
 
-  // JSON'a dikkatli merge ile ekle
-  let prefixGroup = targetJson.data.find((t) => t.prefix === prefix);
-  if (!prefixGroup) {
-    prefixGroup = { prefix, stringMap: {} };
-    targetJson.data.push(prefixGroup);
-  }
+  for (const targetJson of jsonFiles) {
+    // JSON'a dikkatli merge ile ekle
+    let prefixGroup = targetJson.data.find((t) => t.prefix === prefix);
+    if (!prefixGroup) {
+      prefixGroup = { prefix, stringMap: {} };
+      targetJson.data.push(prefixGroup);
+    }
 
-  // Mevcut key varsa uyar
-  if (prefixGroup.stringMap[key]) {
-    const overwrite = confirm(
-      `"${prefix}.${key}" zaten mevcut. Üzerine yazılsın mı?`
+    // Mevcut key varsa uyar
+    if (prefixGroup.stringMap[key]) {
+      const overwrite = confirm(
+        `"${prefix}.${key}" zaten mevcut. Üzerine yazılsın mı?`
+      );
+      if (!overwrite) return;
+    }
+
+    prefixGroup.stringMap[key] = selectedString.text;
+
+    // JSON dosyasını kaydet - mevcut yapıyı koru
+    const jsonContent = JSON.stringify(targetJson.data, null, 2);
+    const saveResult = await window.electronAPI.writeFile(
+      targetJson.path,
+      jsonContent
     );
-    if (!overwrite) return;
-  }
 
-  prefixGroup.stringMap[key] = selectedString.text;
-
-  // JSON dosyasını kaydet - mevcut yapıyı koru
-  const jsonContent = JSON.stringify(targetJson.data, null, 2);
-  const saveResult = await window.electronAPI.writeFile(
-    targetJson.path,
-    jsonContent
-  );
-
-  if (!saveResult.success) {
-    alert("JSON kaydetme hatası: " + saveResult.error);
-    return;
+    if (!saveResult.success) {
+      alert("JSON kaydetme hatası: " + saveResult.error);
+      return;
+    }
   }
 
   // Kaynak dosyayı güncelle
@@ -406,9 +444,7 @@ async function addTranslation() {
   );
 
   if (updateResult.success) {
-    updateStatus(
-      `✓ Çeviri eklendi: ${fullKeyValue} → ${targetJson.path.split("/").pop()}`
-    );
+    updateStatus(`✓ Çeviriler eklendi: ${fullKeyValue}}`);
 
     // JSON stats'ı güncelle
     displayJsonFiles();
