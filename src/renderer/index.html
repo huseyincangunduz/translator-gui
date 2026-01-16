@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Angular/TypeScript Translator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🌐 Angular/TypeScript Translator</h1>
+      <p>String literalleri bul, çevir ve otomatik güncelle</p>
+    </header>
+
+    <main>
+      <!-- Proje Seçimi -->
+      <section class="section">
+        <h2>1. Proje Klasörü</h2>
+        <div class="input-group">
+          <input type="text" id="project-path" placeholder="Proje klasörü seç..." readonly>
+          <button id="btn-select-folder">Klasör Seç</button>
+          <button id="btn-scan" disabled>Tara</button>
+        </div>
+      </section>
+
+      <!-- Çeviri Dosyası Seçimi -->
+      <section class="section">
+        <h2>2. Çeviri JSON Dosyaları</h2>
+        <div class="input-group">
+          <button id="btn-select-json">JSON Dosyaları Seç</button>
+        </div>
+        <div id="json-files-list" class="json-files-list"></div>
+      </section>
+
+      <!-- Bulunan String'ler -->
+      <section class="section">
+        <h2>3. Bulunan String'ler</h2>
+        <div class="toolbar">
+          <input type="text" id="search-strings" placeholder="String'lerde ara...">
+          <span id="string-count" class="badge">0 string</span>
+        </div>
+        <div id="strings-container" class="strings-list">
+          <p class="empty-state">Henüz string taraması yapılmadı</p>
+        </div>
+      </section>
+
+      <!-- Çeviri İşlemleri -->
+      <section class="section">
+        <h2>4. Çeviri Ekle</h2>
+        <div id="translation-form" style="display: none;">
+          <div class="form-group">
+            <label>Seçili String:</label>
+            <div id="selected-string" class="selected-string"></div>
+          </div>
+          <div class="form-group">
+            <label for="target-json">Hedef JSON:</label>
+            <select id="target-json"></select>
+          </div>
+          <div class="form-group">
+            <label for="translation-prefix">Prefix:</label>
+            <input type="text" id="translation-prefix" placeholder="örn: lotus.books">
+          </div>
+          <div class="form-group">
+            <label for="translation-key">Key:</label>
+            <input type="text" id="translation-key" placeholder="örn: question-book">
+          </div>
+          <div class="form-group">
+            <label>Tam Anahtar:</label>
+            <div id="full-key" class="full-key"></div>
+          </div>
+          <div class="form-actions">
+            <button id="btn-add-translation" class="btn-primary">Çeviri Ekle ve Kodu Güncelle</button>
+            <button id="btn-cancel">İptal</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Status Bar -->
+    <div id="status-bar" class="status-bar">
+      Hazır
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

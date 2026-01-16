@@ -1,0 +1,76 @@
+{
+  "name": "translator-gui",
+  "version": "1.0.0",
+  "description": "Angular/TypeScript string literal translator with GUI",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "start": "npm run build && electron .",
+    "dev": "npm run build:dev && electron .",
+    "build": "npm run build:main && npm run build:renderer",
+    "build:dev": "npm run build:main:dev && npm run build:renderer:dev",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:main:dev": "tsc -p tsconfig.main.json --sourceMap",
+    "build:renderer": "tsc -p tsconfig.renderer.json && cp src/renderer/index.html dist/renderer/index.html && cp src/renderer/styles.css dist/renderer/styles.css",
+    "build:renderer:dev": "tsc -p tsconfig.renderer.json --sourceMap && cp src/renderer/index.html dist/renderer/index.html && cp src/renderer/styles.css dist/renderer/styles.css",
+    "watch": "concurrently \"tsc -p tsconfig.main.json --watch\" \"tsc -p tsconfig.renderer.json --watch\"",
+    "package": "electron-builder build --publish never",
+    "package:linux": "electron-builder build --linux --publish never",
+    "package:win": "electron-builder build --win --publish never",
+    "package:mac": "electron-builder build --mac --publish never"
+  },
+  "keywords": [
+    "electron",
+    "typescript",
+    "translator",
+    "i18n",
+    "angular"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "concurrently": "^8.2.2",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.23.5",
+    "@babel/traverse": "^7.23.5",
+    "@types/babel__traverse": "^7.20.4"
+  },
+  "build": {
+    "appId": "com.translator.gui",
+    "productName": "Translator GUI",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools"
+    }
+  }
+}
