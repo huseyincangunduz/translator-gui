@@ -1,3 +1,6 @@
+// this file will be builded with ../../tsconfig.renderer.json 
+
+
 // Ana uygulama mantığı
 let projectPath: string | null = null;
 let jsonFiles: { path: string; data: any[] }[] = [];
