@@ -115,7 +115,7 @@ ipcMain.handle('scan-directory', async (_, dirPath: string, extensions: string[]
             } else if (stat.isFile()) {
               const ext = path.extname(item);
               // Spec (unit test) dosyalarını atla
-              const isSpec = item.endsWith('.spec.ts') || item.endsWith('.spec.js') || item.endsWith('.spec.tsx');
+              const isSpec = item.endsWith('.spec.ts') || item.endsWith('.spec.js') || item.endsWith('.spec.tsx') || item.endsWith('.spec.jsx') || item.endsWith('index.ts');
               // Route, config ve jest dosyalarını atla
               const isSkipped = /route|jest|\.config\./.test(item);
               if (extensions.includes(ext) && !isSpec && !isSkipped) {
