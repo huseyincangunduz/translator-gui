@@ -97,24 +97,28 @@ ipcMain.handle('write-file', async (_, filePath: string, content: string) => {
 ipcMain.handle('scan-directory', async (_, dirPath: string, extensions: string[]) => {
   try {
     const files: string[] = [];
-    
+    const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '.angular', '.nx', 'release']);
+
     function scanDir(currentPath: string) {
       try {
         const items = fs.readdirSync(currentPath);
-        
+
         for (const item of items) {
           try {
             const fullPath = path.join(currentPath, item);
             const stat = fs.statSync(fullPath);
-            
+
             if (stat.isDirectory()) {
-              // node_modules ve dist gibi klasörleri atla
-              if (!['node_modules', 'dist', '.git', '.angular', 'release'].includes(item)) {
+              if (!SKIP_DIRS.has(item)) {
                 scanDir(fullPath);
               }
             } else if (stat.isFile()) {
               const ext = path.extname(item);
-              if (extensions.includes(ext)) {
+              // Spec (unit test) dosyalarını atla
+              const isSpec = item.endsWith('.spec.ts') || item.endsWith('.spec.js') || item.endsWith('.spec.tsx');
+              // Route, config ve jest dosyalarını atla
+              const isSkipped = /route|jest|\.config\./.test(item);
+              if (extensions.includes(ext) && !isSpec && !isSkipped) {
                 files.push(fullPath);
               }
             }
@@ -128,8 +132,27 @@ ipcMain.handle('scan-directory', async (_, dirPath: string, extensions: string[]
         console.log(`Cannot read directory ${currentPath}: ${(error as Error).message}`);
       }
     }
-    
-    scanDir(dirPath);
+
+    // Yalnızca apps, libs veya src alt klasörlerini tara
+    const TARGET_SUBDIRS = ['apps', 'libs', 'src'];
+    let targetDirs: string[] = [];
+    try {
+      targetDirs = fs.readdirSync(dirPath).filter(item => {
+        try {
+          return TARGET_SUBDIRS.includes(item) && fs.statSync(path.join(dirPath, item)).isDirectory();
+        } catch { return false; }
+      });
+    } catch { /* ignore */ }
+
+    if (targetDirs.length > 0) {
+      for (const dir of targetDirs) {
+        scanDir(path.join(dirPath, dir));
+      }
+    } else {
+      // Hedef alt klasör bulunamazsa root'u tara (fallback)
+      scanDir(dirPath);
+    }
+
     return { success: true, files };
   } catch (error) {
     return { success: false, error: (error as Error).message };

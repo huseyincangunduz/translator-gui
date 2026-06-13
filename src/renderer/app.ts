@@ -164,11 +164,45 @@ function extractStrings(filePath: string, content: string): any[] {
       }
     }
   } else {
+    // import / require içeren satır numaralarını hesapla
+    const lines = content.split("\n");
+    const skipLineNumbers = new Set<number>();
+    lines.forEach((line, i) => {
+      if (/^\s*import\s/.test(line) || /\brequire\s*\(/.test(line)) {
+        skipLineNumbers.add(i + 1); // 1-tabanlı
+      }
+    });
+
+    // Angular decorator blok aralıklarını tespit et (içindeki string'leri atla)
+    const skipRanges: { start: number; end: number }[] = [];
+    const decoratorRegex = /@(?:Component|NgModule|Directive|Pipe|Injectable)\s*\(/g;
+    let decoratorMatch: RegExpExecArray | null;
+    while ((decoratorMatch = decoratorRegex.exec(content)) !== null) {
+      let depth = 1;
+      let i = decoratorMatch.index + decoratorMatch[0].length;
+      while (i < content.length && depth > 0) {
+        if (content[i] === "(") depth++;
+        else if (content[i] === ")") depth--;
+        i++;
+      }
+      skipRanges.push({ start: decoratorMatch.index, end: i });
+    }
+    const isInSkipRange = (index: number) =>
+      skipRanges.some((r) => index >= r.start && index < r.end);
+
     // TypeScript string literal'lerini çıkar
     const stringRegex = /(['"`])(?:(?=(\\?))\2.)*?\1/g;
     let match;
 
     while ((match = stringRegex.exec(content)) !== null) {
+      const lineNumber = content.substring(0, match.index).split("\n").length;
+
+      // import / require satırlarını atla
+      if (skipLineNumbers.has(lineNumber)) continue;
+
+      // Angular decorator bloğu içindekileri atla
+      if (isInSkipRange(match.index)) continue;
+
       const text = match[0].slice(1, -1); // Tırnakları çıkar
       if (
         text &&
@@ -180,7 +214,7 @@ function extractStrings(filePath: string, content: string): any[] {
           text,
           file: filePath,
           type: "typescript",
-          line: content.substring(0, match.index).split("\n").length,
+          line: lineNumber,
           fullMatch: match[0],
         });
       }
@@ -286,10 +320,10 @@ function updateFullKey() {
   const prefix = translationPrefix.value.trim();
   const key = translationKey.value.trim();
 
-  if (prefix && key) {
-    fullKey.textContent = `${prefix}.${key}`;
+  if (key) {
+    fullKey.textContent = prefix ? `${prefix}.${key}` : key;
   } else {
-    fullKey.textContent = "(prefix ve key gerekli)";
+    fullKey.textContent = "(key gerekli)";
   }
 }
 
@@ -376,26 +410,28 @@ async function addTranslation() {
 async function addTranslationToFile() {
   const prefix = translationPrefix.value.trim();
   const key = translationKey.value.trim();
-  alert("Prefix: " + prefix + " Key: " + key);
-  if (!prefix || !key) {
-    alert("Prefix ve key alanları zorunludur");
+  if (!key) {
+    alert("Key alanı zorunludur");
     return;
   }
 
-  const fullKeyValue = `${prefix}.${key}`;
+  const fullKeyValue = prefix ? `${prefix}.${key}` : key;
 
   for (const targetJson of jsonFiles) {
     // JSON'a dikkatli merge ile ekle
-    let prefixGroup = targetJson.data.find((t) => t.prefix === prefix);
+    // Prefix yoksa prefix'i null/undefined/"" olan ya da hiç prefix alanı olmayan bloğu bul
+    let prefixGroup = prefix
+      ? targetJson.data.find((t: any) => t.prefix === prefix)
+      : targetJson.data.find((t: any) => !t.prefix);
     if (!prefixGroup) {
-      prefixGroup = { prefix, stringMap: {} };
+      prefixGroup = prefix ? { prefix, stringMap: {} } : { stringMap: {} };
       targetJson.data.push(prefixGroup);
     }
 
     // Mevcut key varsa uyar
     if (prefixGroup.stringMap[key]) {
       const overwrite = confirm(
-        `"${prefix}.${key}" zaten mevcut. Üzerine yazılsın mı?`
+        `"${fullKeyValue}" zaten mevcut. Üzerine yazılsın mı?`
       );
       if (!overwrite) return;
     }
@@ -425,16 +461,16 @@ async function addTranslationToFile() {
   let updatedContent = fileResult.content;
 
   if (selectedString.type === "html-text") {
-    // HTML: ">text<" -> ">{{ 'prefix.key' | translate }}<"
+    // HTML: ">text<" -> ">{{ 'key' | translate }}<" veya ">{{ 'prefix.key' | translate }}<"
     updatedContent = updatedContent.replace(
       `>${selectedString.text}<`,
       `>{{ '${fullKeyValue}' | translate }}<`
     );
   } else {
-    // TypeScript: 'text' veya "text" -> translate('prefix.key')
+    // TypeScript: 'text' veya "text" -> translate('key') veya translate('prefix.key')
     updatedContent = updatedContent.replace(
       selectedString.fullMatch,
-      `this.translate.getString('${fullKeyValue}')`
+      `translate('${fullKeyValue}')`
     );
   }
 
